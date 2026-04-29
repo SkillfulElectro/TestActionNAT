@@ -1,0 +1,21 @@
+name: Check Runner NAT Type for P2P
+
+on:
+  workflow_dispatch:   # allows manual trigger
+  push:                # optional: run on push for quick testing
+
+jobs:
+  nat-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install prerequisites
+        run: sudo apt-get update && sudo apt-get install -y wget
+
+      - name: Download STUN client (STUNTMAN)
+        run: |
+          wget -q http://stunprotocol.org/stunclient-1.2.5-linux-amd64.tar.gz -O stunclient.tar.gz
+          tar -xzf stunclient.tar.gz
+          chmod +x stunclient
+
+      - name: Run NAT behavior test
+        run: ./stunclient stunserver2025.stunprotocol.org --mode behavior
