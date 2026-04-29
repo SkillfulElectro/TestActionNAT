@@ -1,36 +1,23 @@
 name: Check Runner NAT Type for P2P
 
 on:
-  workflow_dispatch:
-  push:                # optional, for quick testing
+  workflow_dispatch:   # manual trigger
+  push:                # optional, run on push for testing
 
 jobs:
   nat-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Download and prepare STUN client
-        run: |
-          echo "Downloading stunclient..."
-          curl -fSL --retry 5 --retry-delay 10 \
-               -o stunclient.tar.gz \
-               http://stunprotocol.org/stunclient-1.2.5-linux-amd64.tar.gz
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-          tar -xzf stunclient.tar.gz
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-          # The archive may contain just the binary, or a folder with the binary inside.
-          if [ -f stunclient ]; then
-            chmod +x stunclient
-          elif [ -d stunclient* ]; then
-            # Move binary from the subdirectory into the current directory
-            mv stunclient*/stunclient . && chmod +x stunclient
-            rm -rf stunclient*/
-          else
-            echo "❌ Could not locate stunclient binary. Directory contents:"
-            ls -laR
-            exit 1
-          fi
+      - name: Install dependency
+        run: pip install pystun3
 
-          rm -f stunclient.tar.gz
-
-      - name: Run NAT behavior test
-        run: ./stunclient stunserver2025.stunprotocol.org --mode behavior
+      - name: Run NAT type check
+        run: python3 check_nat.py
