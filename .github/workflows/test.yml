@@ -1,33 +1,36 @@
 name: Check Runner NAT Type for P2P
 
 on:
-  workflow_dispatch:   # Allows manual trigger
-  push:                # Optional: run on push for quick testing
+  workflow_dispatch:
+  push:                # optional, for quick testing
 
 jobs:
   nat-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y curl
-
-      - name: Try installing stun-client from package manager (Primary)
-        id: apt_install
-        continue-on-error: true
-        run: sudo apt-get install -y stun-client
-
-      - name: Download and run STUNTMAN client (Fallback)
-        if: steps.apt_install.outcome == 'failure'
+      - name: Download and prepare STUN client
         run: |
-          echo "Package install failed. Attempting direct download..."
-          curl --retry 3 --retry-delay 5 -L -o stunclient.tar.gz http://stunprotocol.org/stunclient-1.2.5-linux-amd64.tar.gz
+          echo "Downloading stunclient..."
+          curl -fSL --retry 5 --retry-delay 10 \
+               -o stunclient.tar.gz \
+               http://stunprotocol.org/stunclient-1.2.5-linux-amd64.tar.gz
+
           tar -xzf stunclient.tar.gz
-          chmod +x stunclient
-          
-      - name: Run NAT behavior test
-        run: |
-          if command -v stun-client &> /dev/null; then
-            stun-client stunserver2025.stunprotocol.org --mode behavior
+
+          # The archive may contain just the binary, or a folder with the binary inside.
+          if [ -f stunclient ]; then
+            chmod +x stunclient
+          elif [ -d stunclient* ]; then
+            # Move binary from the subdirectory into the current directory
+            mv stunclient*/stunclient . && chmod +x stunclient
+            rm -rf stunclient*/
           else
-            ./stunclient stunserver2025.stunprotocol.org --mode behavior
+            echo "❌ Could not locate stunclient binary. Directory contents:"
+            ls -laR
+            exit 1
           fi
+
+          rm -f stunclient.tar.gz
+
+      - name: Run NAT behavior test
+        run: ./stunclient stunserver2025.stunprotocol.org --mode behavior
